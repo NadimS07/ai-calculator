@@ -11,7 +11,6 @@
     --bg:#0b1020; --bg2:#0b0f1c; --card:rgba(20,24,45,.55);
     --stroke:rgba(130,145,200,.25); --ink:#eef1ff; --muted:#a9b0d6;
     --accent:#7aa2ff; --accent2:#a78bfa;
-    --ok:#55efc4; --warn:#ffadad;
   }
   [data-theme="light"]{
     --bg:#edf2ff; --bg2:#eef3ff; --card:rgba(255,255,255,.7);
@@ -55,7 +54,7 @@
     backdrop-filter: blur(10px);
   }
   .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
-  .inputWrap{flex:1; display:flex; gap:10px; align-items:center; position:relative}
+  .inputWrap{flex:1; display:flex; gap:10px; align-items:center}
   input[type=text]{
     flex:1; background:rgba(10,14,30,.75);
     border:1px solid var(--stroke); border-radius:14px;
@@ -105,7 +104,6 @@
   .small{font-size:12px; color:#9aa2d9; margin-top:6px}
   .explain{margin-top:8px; font-size:13px; color:#cfd4ff; background:rgba(10,14,30,.6); border:1px solid var(--stroke); border-radius:10px; padding:10px 12px}
   .explain b{color:#fff}
-  /* Settings modal */
   dialog{border:none; border-radius:16px; padding:0; width:min(540px, 94vw); background:var(--card); color:var(--ink); border:1px solid var(--stroke); box-shadow:0 20px 60px rgba(0,0,0,.45); backdrop-filter: blur(10px)}
   .dhead{display:flex; justify-content:space-between; align-items:center; padding:16px 18px; border-bottom:1px solid var(--stroke)}
   .dcont{padding:16px 18px; display:grid; gap:14px}
@@ -205,9 +203,7 @@
 <script defer>
 (function(){
   // ===== DOM =====
-  const root = document.getElementById('root');
   const qEl = document.getElementById('q');
-  const outWrap = document.getElementById('out');
   const outText = document.getElementById('answerText');
   const goEl = document.getElementById('go');
   const histEl = document.getElementById('hist');
@@ -230,16 +226,14 @@
   const rateEl = document.getElementById('rate');
   const pitchEl = document.getElementById('pitch');
   const sepEl = document.getElementById('sep');
-
-  // Angle mode radios
   const angleRadios = Array.from(document.querySelectorAll('input[name="angle"]'));
 
-  // ===== Persistence (theme + settings) =====
+  // ===== Persistence =====
   const savedTheme = localStorage.getItem('theme');
   if (savedTheme) document.body.setAttribute('data-theme', savedTheme);
   themeBtn.onclick = ()=> {
-    const cur = document.body.getAttribute('data-theme') === 'light' ? 'dark':'light';
-    if (cur==='dark') document.body.removeAttribute('data-theme'); else document.body.setAttribute('data-theme','light');
+    const isLight = document.body.getAttribute('data-theme') === 'light';
+    if (isLight) document.body.removeAttribute('data-theme'); else document.body.setAttribute('data-theme','light');
     localStorage.setItem('theme', document.body.getAttribute('data-theme') || 'dark');
   };
 
@@ -259,11 +253,11 @@
   [rateEl,pitchEl,sepEl,...angleRadios].forEach(el=> el.addEventListener('input', saveSettings));
   settingsBtn.onclick = ()=> modal.showModal();
   closeSettings.onclick = ()=> modal.close();
-  window.addEventListener('keydown', e=>{ if(e.key==='?') modal.open?modal.close():modal.showModal(); });
+  window.addEventListener('keydown', e=>{ if(e.key==='?') (modal.open?modal.close():modal.showModal()); });
 
   // ===== Core =====
   let lastAnswer = null;
-  const history = [];
+  const logs = [];              // <— renamed from "history" to avoid collision
 
   const examples = [
     "what's 15% of 120",
@@ -275,18 +269,8 @@
     "40 celsius to fahrenheit",
     "use last answer / 4"
   ];
-  // Smart suggestions builder
-  function suggestFromIntent(intent){
-    if (intent==='percent') return ["what's 18% of 650", "increase 120 by 12%"];
-    if (intent==='convert') return ["convert 10 miles to km", "500 ml to l"];
-    if (intent==='trig') return ["cos 60 degrees", "tan 45 degrees"];
-    if (intent==='temp') return ["98 °F to celsius", "0 °C to °F"];
-    if (intent==='power') return ["3 to the power of 4", "square root of 144"];
-    return ["5 km to miles","what's 15% of 220","sin 30 degrees"];
-  }
-  function refreshChips(extra){
+  function refreshChips(list=examples){
     chipsEl.innerHTML = '';
-    const list = extra?.length ? extra : examples;
     list.forEach(e=>{
       const c=document.createElement('button');
       c.className='chip'; c.textContent=e;
@@ -298,9 +282,9 @@
 
   function escapeHtml(s){ return s.toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
   function showResult(text){ outText.textContent = text; }
-  function pushHistory(input, result, exp){
-    history.unshift({input, result, exp});
-    histEl.innerHTML = history.map((h,i) =>
+  function pushLog(input, result, exp){
+    logs.unshift({input, result, exp});
+    histEl.innerHTML = logs.map((h,i) =>
       `<li>
          <strong>${escapeHtml(h.input)}</strong> = ${escapeHtml(h.result.toString())}
          ${h.exp ? ` <button class="act" onclick="document.querySelectorAll('.hx')[${i}].style.display = (document.querySelectorAll('.hx')[${i}].style.display==='none'?'block':'none')">Explain</button>`:''}
@@ -314,11 +298,9 @@
     return String(n);
   }
 
-  // “AI-ish” Natural language → plan (intent detection + patterns + typo forgiveness)
   function normalize(raw){
     let s = ' ' + raw.toLowerCase().trim() + ' ';
     s = s.replace(/\s+/g,' ');
-    // fix common typos quickly
     s = s.replace(/\bcelc?ius\b/g,'celsius').replace(/\bfaren(h|)eit\b/g,'fahrenheit')
          .replace(/\bdeg\b/g,'degrees').replace(/\bkilometers?\b/g,'km').replace(/\bmeters?\b/g,'m');
     return s;
@@ -331,39 +313,34 @@
       s = s.replace(/\blast answer\b/g, lastAnswer.toString());
       s = s.replace(/\blast\b/g, lastAnswer.toString());
     }
-    // --- intent: convert units ---
+
     const conv1 = s.match(/(?:convert\s+)?([\d\.\-e]+)\s*([a-z°]+)\s+(?:to|in)\s+([a-z°]+)/);
     if (conv1) return { type:'convert', intent:'convert', value: conv1[1], from: conv1[2], to: conv1[3], raw };
-    // --- intent: temperature ---
     const c2 = s.match(/([\d\.\-e]+)\s*(c|celsius|°c)\s+(?:to|in)\s*(f|fahrenheit|°f)/);
     if (c2) return { type:'temp', intent:'temp', value:c2[1], from:'C', to:'F', raw };
     const c3 = s.match(/([\d\.\-e]+)\s*(f|fahrenheit|°f)\s+(?:to|in)\s*(c|celsius|°c)/);
     if (c3) return { type:'temp', intent:'temp', value:c3[1], from:'F', to:'C', raw };
 
-    // percent, sqrt, power
     let expr = s;
     let intent = 'expr';
-    if (/percent|% of/.test(expr)){ intent='percent'; }
+    if (/percent|% of/.test(expr)) intent='percent';
     expr = expr.replace(/(\d+(?:\.\d+)?)\s*%?\s*(percent)?\s*of\s*(\d+(?:\.\d+)?)/g, '($1/100)*$3');
     expr = expr.replace(/square\s+root\s+of\s+(\d+(?:\.\d+)?)/g, 'sqrt($1)');
     if (/power/.test(expr)) intent = 'power';
     expr = expr.replace(/(\d+(?:\.\d+)?)\s+(?:to\s+the\s+power\s+of|power\s+of|power)\s+(\-?\d+(?:\.\d+)?)/g, '($1^$2)');
 
-    // trig (degrees or radians)
     if (/(sin|cos|tan)\s+/.test(expr)) intent='trig';
     if (angleMode==='deg'){
       expr = expr.replace(/(sin|cos|tan)\s+(\-?\d+(?:\.\d+)?)\s*degrees?/g, '$1($2 deg)');
     } else {
-      expr = expr.replace(/(sin|cos|tan)\s+(\-?\d+(?:\.\d+)?)/g, '$1($2)'); // assume already radians
+      expr = expr.replace(/(sin|cos|tan)\s+(\-?\d+(?:\.\d+)?)/g, '$1($2)');
     }
 
-    // operators (some NL)
     [
       [/divided\s+by/g,'/'], [/\bover\b/g,'/'],
       [/multiply\s+by|times|multiplied\s+by/g,'*'],
       [/plus|add(ed)?|and/g,'+'], [/minus|subtract(ed)?/g,'-'],
     ].forEach(([r,t])=> expr = expr.replace(r,t));
-
     expr = expr.replace(/\bwhat(?:'|’)s\b|\bwhat is\b|\bcalculate\b|\bhow much is\b|\bplease\b|\bthen\b/gi,' ');
     expr = expr.replace(/\s+/g,' ').trim();
 
@@ -372,22 +349,18 @@
 
   function explainCompact(plan, rendered){
     try{
-      // percent
       if (/\(\s*[\d\.]+\/100\)\s*\*\s*[\d\.]+/.test(plan.expr||'')) {
         const m = plan.expr.match(/^\(\s*([\d\.]+)\/100\)\s*\*\s*([\d\.]+)$/);
         if (m) return `<b>Percent:</b> ${m[1]}% of ${m[2]} = (${m[1]}/100) × ${m[2]} = <b>${rendered}</b>`;
       }
-      // power
       if (/^\(?[\d\.]+\^[-\d\.]+\)?$/.test(plan.expr||'')) {
         const [base, pow] = plan.expr.replace(/[()]/g,'').split('^');
         return `<b>Power:</b> ${base}<sup>${pow}</sup> = <b>${rendered}</b>`;
       }
-      // sqrt
       if (/^sqrt\([\d\.]+\)$/.test(plan.expr||'')) {
         const m = plan.expr.match(/sqrt\(([\d\.]+)\)/);
         return `<b>Root:</b> √${m[1]} = <b>${rendered}</b>`;
       }
-      // trig
       if (/(sin|cos|tan)\(([-\d\.]+)\s*deg\)/.test(plan.expr||'')) {
         const m = plan.expr.match(/(sin|cos|tan)\(([-\d\.]+)\s*deg\)/);
         return `<b>Trig:</b> ${m[1]}(${m[2]}°) → radians = ${m[2]}×π/180 → <b>${rendered}</b>`;
@@ -429,21 +402,18 @@
       }
       showResult(rendered);
 
-      // Explain + history
       let exp = '';
       if (explainToggle.checked) {
         exp = explainCompact(plan, rendered);
         if (exp) { explainBox.style.display='block'; explainBox.innerHTML = exp; } else { explainBox.style.display='none'; explainBox.innerHTML=''; }
       } else { explainBox.style.display='none'; explainBox.innerHTML=''; }
-      pushHistory(input, rendered, exp);
+      pushLog(input, rendered, exp);
 
-      // Smart suggestions refresh
-      refreshChips(suggestFromIntent(plan.intent));
+      // Update URL hash (shareable) — use window.history explicitly
+      const url = new URL(location.href); url.hash = encodeURIComponent(input);
+      window.history.replaceState(null,'',url.toString());
 
       if (autoSpeak.checked) speakResult(rendered);
-
-      // Update shareable URL with query
-      const url = new URL(location.href); url.hash = encodeURIComponent(input); history.replaceState(null,'',url.toString());
     } catch (e){
       const msg = "Sorry, I couldn't parse that.\nDetails: " + e.message;
       showResult(msg); explainBox.style.display='none'; explainBox.innerHTML='';
@@ -460,7 +430,7 @@
     if (initQ){ qEl.value = initQ; setTimeout(process, 50); }
   }
 
-  // ===== Voice INPUT (Web Speech) =====
+  // ===== Voice INPUT =====
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   let rec = null, listening = false, bufferText = '';
   if (!SR){
@@ -529,7 +499,7 @@
   };
   clearBtn.onclick = ()=>{ qEl.value=''; showResult('Result will appear here.'); explainBox.style.display='none'; explainBox.innerHTML=''; };
 
-  // ===== Initial focus =====
+  // initial focus
   setTimeout(()=> qEl.focus(), 0);
 })();
 </script>
