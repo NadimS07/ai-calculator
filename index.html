@@ -1,265 +1,316 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>AI Calculator</title>
-  <script src="https://cdn.jsdelivr.net/npm/mathjs@11/lib/browser/math.js" defer></script>
-  <style>
-    :root{--bg:#0f1220;--card:#171b2e;--ink:#e9ecff;--muted:#aab0d4;--accent:#7aa2ff}
-    *{box-sizing:border-box}
-    body{margin:0;background:linear-gradient(180deg,#0f1220,#0b0f1c);color:var(--ink);
-      font:16px/1.4 system-ui,Segoe UI,Roboto,Inter,sans-serif;display:flex;min-height:100vh}
-    .wrap{max-width:900px;margin:auto;padding:28px;width:100%}
-    .title{font-size:28px;font-weight:800;margin:0 0 4px}
-    .subtitle{color:var(--muted);margin:0 0 24px}
-    .card{background:var(--card);border:1px solid #2a3152;border-radius:16px;padding:16px}
-    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
-    .inputWrap{flex:1;display:flex;gap:10px;align-items:center}
-    input[type=text]{flex:1;background:#0f1427;border:1px solid #2a3152;border-radius:12px;
-      padding:14px 16px;color:var(--ink);font-size:16px;outline:none}
-    input[type=text]::placeholder{color:#6f77a6}
-    button{background:var(--accent);color:#0a0d1a;border:none;border-radius:12px;
-      padding:12px 16px;font-weight:600;cursor:pointer}
-    button:disabled{opacity:.6;cursor:not-allowed}
-    .mic{display:inline-flex;align-items:center;gap:8px;background:#0f1427;color:var(--ink);
-      border:1px solid #2a3152}
-    .mic.listening{box-shadow:0 0 0 2px #2a3152,0 0 0 6px rgba(122,162,255,.25)}
-    .status{font-size:12px;color:var(--muted)}
-    .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px}
-    .toggle{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
-    .out{margin-top:14px;padding:14px 16px;background:#0f1427;border:1px dashed #2a3152;border-radius:12px;white-space:pre-wrap}
-    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-    .chip{background:#0f1427;border:1px solid #2a3152;border-radius:999px;padding:8px 10px;font-size:13px;cursor:pointer;color:#fff}
-    .history{margin-top:18px}
-    .history h3{margin:0 0 8px;font-size:15px;color:var(--muted);font-weight:600}
-    .history ul{margin:0;padding-left:20px;font-size:14px;color:#cdd2ff}
-    .small{font-size:12px;color:#9aa2d9}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AI Calculator</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop stop-color='%237aa2ff'/%3E%3Cstop stop-color='%23a78bfa' offset='1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect rx='14' ry='14' width='64' height='64' fill='%23101725'/%3E%3Cpath d='M12 48h40' stroke='url(%23g)' stroke-width='5' stroke-linecap='round'/%3E%3Ctext x='32' y='34' text-anchor='middle' font-size='28' fill='%23e9ecff' font-family='Segoe UI, Roboto, Arial' %3E∑%3C/text%3E%3C/svg%3E">
+<script src="https://cdn.jsdelivr.net/npm/mathjs@11/lib/browser/math.js" defer></script>
+
+<style>
+  :root{
+    --bg:#0b1020; --card:rgba(20,24,45,.55); --stroke:rgba(130,145,200,.25);
+    --ink:#eef1ff; --muted:#a9b0d6; --accent:#7aa2ff; --accent2:#a78bfa;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0; color:var(--ink);
+    font:16px/1.5 ui-sans-serif,system-ui,Segoe UI,Inter,Roboto,Arial;
+    display:flex; min-height:100vh; overflow-x:hidden;
+    background:
+      radial-gradient(1200px 600px at -10% -10%, rgba(122,162,255,.12), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgba(167,139,250,.12), transparent 60%),
+      radial-gradient(1200px 700px at 50% 120%, rgba(122,162,255,.12), transparent 60%),
+      linear-gradient(180deg,#0b1020,#0b0f1c 60%, #0a0e1a);
+  }
+  .container{width:100%; max-width:1000px; margin:auto; padding:48px 24px 64px; position:relative}
+  /* subtle floating blobs */
+  .blob{position:absolute; filter:blur(60px); opacity:.25; pointer-events:none}
+  .b1{width:380px; height:380px; background:radial-gradient(circle at 30% 30%,#7aa2ff,transparent 60%); top:-120px; left:-120px}
+  .b2{width:420px; height:420px; background:radial-gradient(circle at 70% 70%,#a78bfa,transparent 60%); top:-80px; right:-120px}
+
+  header{display:flex; align-items:center; gap:14px; margin:0 0 24px}
+  .logo{
+    background:linear-gradient(92deg,var(--accent),var(--accent2));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+    font-weight:900; font-size:34px; letter-spacing:.2px
+  }
+  .tag{color:var(--muted); font-size:14px}
+
+  .card{
+    background:var(--card);
+    border:1px solid var(--stroke);
+    border-radius:20px;
+    padding:18px;
+    box-shadow:0 10px 30px rgba(5,8,20,.45), inset 0 1px 0 rgba(255,255,255,.05);
+    backdrop-filter: blur(10px);
+  }
+
+  /* input row */
+  .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+  .inputWrap{flex:1; display:flex; gap:10px; align-items:center; position:relative}
+  input[type=text]{
+    flex:1; background:rgba(10,14,30,.75);
+    border:1px solid var(--stroke); border-radius:14px;
+    padding:14px 16px; color:var(--ink); font-size:16px; outline:none;
+    transition:border .18s, box-shadow .18s, transform .06s;
+  }
+  input[type=text]::placeholder{color:#7f88b1}
+  input[type=text]:focus{
+    border-color: color-mix(in srgb, var(--accent) 60%, white 0%);
+    box-shadow:0 0 0 4px rgba(122,162,255,.18), 0 8px 24px rgba(10,18,40,.4);
+  }
+
+  button{
+    background:linear-gradient(92deg,var(--accent), var(--accent2));
+    color:#0c1022; border:none; border-radius:14px; padding:12px 16px;
+    font-weight:700; cursor:pointer; transition:transform .06s, filter .2s, box-shadow .2s;
+    box-shadow:0 6px 22px rgba(122,162,255,.25);
+  }
+  button:active{transform:translateY(1px)}
+  .ghost{
+    background:rgba(10,14,30,.75); color:var(--ink);
+    border:1px solid var(--stroke); box-shadow:none;
+  }
+  .ghost:hover{border-color:color-mix(in srgb, var(--accent) 60%, white 0%)}
+
+  .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:12px 0 6px}
+  .toggle{display:inline-flex; gap:8px; align-items:center; font-size:13px; color:var(--muted)}
+  .status{font-size:12px; color:var(--muted)}
+
+  /* chips */
+  .chips{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
+  .chip{
+    background:rgba(10,14,30,.75); border:1px solid var(--stroke);
+    color:#fff; border-radius:999px; padding:8px 12px; font-size:13px; cursor:pointer;
+    transition:border .18s, transform .06s, box-shadow .2s;
+  }
+  .chip:hover{border-color:color-mix(in srgb, var(--accent) 60%, white 0%); box-shadow:0 0 0 3px rgba(122,162,255,.14)}
+  .chip:active{transform:translateY(1px)}
+
+  /* result box */
+  .out{
+    margin-top:14px; padding:16px 18px; background:rgba(10,14,30,.75);
+    border:1px dashed var(--stroke); border-radius:14px; white-space:pre-wrap;
+    font-size:15px; min-height:54px;
+  }
+
+  /* history */
+  .history{margin-top:18px}
+  .history h3{margin:0 0 8px; font-size:15px; color:var(--muted); font-weight:700}
+  .history ul{margin:0; padding-left:20px; font-size:14px; color:#d7dcff}
+  .small{font-size:12px; color:#9aa2d9; margin-top:6px}
+  code{background:rgba(122,162,255,.12); border:1px solid rgba(122,162,255,.2); padding:2px 6px; border-radius:8px}
+
+  /* mic button */
+  .mic{display:inline-flex; align-items:center; gap:8px; background:rgba(10,14,30,.75);
+       color:var(--ink); border:1px solid var(--stroke)}
+  .mic.listening{box-shadow:0 0 0 2px rgba(122,162,255,.5), 0 0 0 8px rgba(122,162,255,.15)}
+  .spacer{height:14px}
+  @media (max-width:640px){ .title{font-size:26px} }
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <h1 class="title">AI Calculator</h1>
-    <p class="subtitle">Type or speak what you mean. I’ll figure out the math.</p>
+<div class="container">
+  <div class="blob b1"></div><div class="blob b2"></div>
 
-    <div class="card">
-      <div class="row">
-        <div class="inputWrap">
-          <input id="q" type="text" placeholder='Try: "15% of 120", "sin 30 degrees", "5 km to miles"' />
-          <button id="mic" class="mic" title="Toggle voice (Ctrl+M)">🎤 <span id="micLabel">Speak</span></button>
-        </div>
-        <button id="go">Calculate</button>
+  <header>
+    <div class="logo">AI Calculator</div>
+    <div class="tag">Type or speak. I’ll do the math.</div>
+  </header>
+
+  <div class="card">
+    <div class="row">
+      <div class="inputWrap">
+        <input id="q" type="text" placeholder='Try: "15% of 120", "sin 30 degrees", "5 km to miles"' />
+        <button id="mic" class="mic ghost" title="Toggle voice (Ctrl+M)">🎤 <span id="micLabel">Speak</span></button>
       </div>
+      <button id="go">Calculate</button>
+    </div>
 
-      <!-- NEW: Voice output controls -->
-      <div class="controls">
-        <button id="say" title="Speak result (Ctrl+L)">🔊 Speak Result</button>
-        <label class="toggle"><input type="checkbox" id="autoSpeak" checked> Auto-speak results</label>
-        <span class="status" id="vStatus"></span>
-      </div>
+    <div class="controls">
+      <button id="say" class="ghost" title="Speak result (Ctrl+L)">🔊 Speak Result</button>
+      <label class="toggle"><input type="checkbox" id="autoSpeak" checked> Auto-speak results</label>
+      <span class="status" id="vStatus"></span>
+    </div>
 
-      <div class="chips" id="chips"></div>
-      <div class="out" id="out">Result will appear here.</div>
+    <div class="chips" id="chips"></div>
 
-      <div class="history">
-        <h3>History</h3>
-        <ul id="hist"></ul>
-        <div class="small">Tips: “add 5 and 7 * 3”, “square root of 81”, “use last / 4”. Last keyword: <code>last</code>.</div>
-      </div>
+    <div class="out" id="out">Result will appear here.</div>
+
+    <div class="history">
+      <h3>History</h3>
+      <ul id="hist"></ul>
+      <div class="small">Tips: “add 5 and 7 * 3”, “square root of 81”, “use last / 4”. Last keyword: <code>last</code>.</div>
     </div>
   </div>
 
-  <script defer>
-  (function(){
-    // DOM
-    const qEl = document.getElementById('q');
-    const outEl = document.getElementById('out');
-    const goEl = document.getElementById('go');
-    const histEl = document.getElementById('hist');
-    const chipsEl = document.getElementById('chips');
-    const micBtn = document.getElementById('mic');
-    const micLabel = document.getElementById('micLabel');
-    const vStatus = document.getElementById('vStatus');
-    const sayBtn = document.getElementById('say');
-    const autoSpeak = document.getElementById('autoSpeak');
+  <div class="spacer"></div>
+</div>
 
-    // Core
-    let lastAnswer = null;
-    const history = [];
-    const examples = [
-      "what's 15% of 120",
-      "add 5 and 7 then multiply by 3",
-      "square root of 81",
-      "2 to the power of 5",
-      "sin 30 degrees",
-      "convert 5 km to miles",
-      "40 celsius to fahrenheit",
-      "use last answer / 4"
-    ];
-    examples.forEach(e=>{
-      const c=document.createElement('button');
-      c.className='chip'; c.textContent=e;
-      c.onclick=()=>{ qEl.value=e; process(); };
-      chipsEl.appendChild(c);
-    });
+<script defer>
+(function(){
+  // ===== DOM =====
+  const qEl = document.getElementById('q');
+  const outEl = document.getElementById('out');
+  const goEl = document.getElementById('go');
+  const histEl = document.getElementById('hist');
+  const chipsEl = document.getElementById('chips');
+  const micBtn = document.getElementById('mic');
+  const micLabel = document.getElementById('micLabel');
+  const vStatus = document.getElementById('vStatus');
+  const sayBtn = document.getElementById('say');
+  const autoSpeak = document.getElementById('autoSpeak');
 
-    function escapeHtml(s){ return s.toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-    function showResult(text){ outEl.textContent = text; }
-    function pushHistory(input, result){
-      history.unshift({input, result});
-      histEl.innerHTML = history.map(h => `<li><strong>${escapeHtml(h.input)}</strong> = ${escapeHtml(h.result.toString())}</li>`).join('');
+  // ===== Core =====
+  let lastAnswer = null;
+  const history = [];
+  const examples = [
+    "what's 15% of 120",
+    "add 5 and 7 then multiply by 3",
+    "square root of 81",
+    "2 to the power of 5",
+    "sin 30 degrees",
+    "convert 5 km to miles",
+    "40 celsius to fahrenheit",
+    "use last answer / 4"
+  ];
+  examples.forEach(e=>{
+    const c=document.createElement('button');
+    c.className='chip'; c.textContent=e;
+    c.onclick=()=>{ qEl.value=e; process(); };
+    chipsEl.appendChild(c);
+  });
+
+  function escapeHtml(s){ return s.toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+  function showResult(text){ outEl.textContent = text; }
+  function pushHistory(input, result){
+    history.unshift({input, result});
+    histEl.innerHTML = history.map(h => `<li><strong>${escapeHtml(h.input)}</strong> = ${escapeHtml(h.result.toString())}</li>`).join('');
+  }
+  function formatNumber(n){ return (typeof n === 'number' && !Number.isInteger(n)) ? String(Number(n.toFixed(8))) : String(n); }
+
+  // Natural language → math
+  function nlToPlan(raw){
+    let s = ' ' + raw.toLowerCase().trim() + ' ';
+    if (lastAnswer !== null){
+      s = s.replace(/\blast answer\b/g, lastAnswer.toString());
+      s = s.replace(/\blast\b/g, lastAnswer.toString());
     }
-    function formatNumber(n){ return (typeof n === 'number' && !Number.isInteger(n)) ? String(Number(n.toFixed(8))) : String(n); }
+    const conv1 = s.match(/(?:convert\s+)?([\d\.\-e]+)\s*([a-z°]+)\s+(?:to|in)\s+([a-z°]+)/);
+    if (conv1) return { type:'convert', value: conv1[1], from: conv1[2], to: conv1[3] };
+    const c2 = s.match(/([\d\.\-e]+)\s*(c|celsius|°c)\s+(?:to|in)\s*(f|fahrenheit|°f)/);
+    if (c2) return { type:'temp', value:c2[1], from:'C', to:'F' };
+    const c3 = s.match(/([\d\.\-e]+)\s*(f|fahrenheit|°f)\s+(?:to|in)\s*(c|celsius|°c)/);
+    if (c3) return { type:'temp', value:c3[1], from:'F', to:'C' };
+    s = s.replace(/(\d+(?:\.\d+)?)\s*%?\s*(percent)?\s*of\s*(\d+(?:\.\d+)?)/g, '($1/100)*$3');
+    s = s.replace(/square\s+root\s+of\s+(\d+(?:\.\d+)?)/g, 'sqrt($1)');
+    s = s.replace(/(sin|cos|tan)\s+(\-?\d+(?:\.\d+)?)\s*degrees?/g, '$1($2 deg)');
+    s = s.replace(/(\d+(?:\.\d+)?)\s+(?:to\s+the\s+power\s+of|power\s+of|power)\s+(\-?\d+(?:\.\d+)?)/g, '($1^$2)');
+    [
+      [/divided\s+by/g,'/'], [/\bover\b/g,'/'],
+      [/multiply\s+by|times|multiplied\s+by/g,'*'],
+      [/plus|add(ed)?|and/g,'+'], [/minus|subtract(ed)?/g,'-'],
+    ].forEach(([r,t])=> s = s.replace(r,t));
+    s = s.replace(/\bwhat(?:'|’)s\b|\bwhat is\b|\bcalculate\b|\bhow much is\b|\bplease\b|\bthen\b/gi,' ');
+    s = s.replace(/\s+/g,' ').trim();
+    return { type:'expr', expr: s };
+  }
 
-    // Natural language → math.js plan
-    function nlToPlan(raw){
-      let s = ' ' + raw.toLowerCase().trim() + ' ';
-      if (lastAnswer !== null){
-        s = s.replace(/\blast answer\b/g, lastAnswer.toString());
-        s = s.replace(/\blast\b/g, lastAnswer.toString());
+  function process(){
+    const input = qEl.value.trim();
+    if (!input){ showResult("Please type or say something to calculate."); return; }
+    try{
+      const plan = nlToPlan(input);
+      let rendered = '';
+      if (plan.type === 'convert'){
+        const u = math.unit(Number(plan.value), plan.from);
+        const result = u.to(plan.to);
+        rendered = `${plan.value} ${plan.from} = ${result.toString()}`;
+        lastAnswer = Number(result.toNumber ? result.toNumber() : result.value);
+      } else if (plan.type === 'temp'){
+        let result;
+        if (plan.from==='C' && plan.to==='F'){ result = Number(plan.value) * 9/5 + 32; rendered = `${plan.value} °C = ${formatNumber(result)} °F`; }
+        else { result = (Number(plan.value) - 32) * 5/9; rendered = `${plan.value} °F = ${formatNumber(result)} °C`; }
+        lastAnswer = result;
+      } else {
+        const res = math.evaluate(plan.expr);
+        if (math.typeOf(res) === 'Unit'){ rendered = res.toString(); lastAnswer = Number(res.toNumber()); }
+        else if (math.typeOf(res) === 'BigNumber'){ rendered = res.toString(); lastAnswer = Number(res.toNumber()); }
+        else { rendered = formatNumber(res); lastAnswer = Number(res); }
       }
-      // unit conversions like "5 km to miles"
-      const conv1 = s.match(/(?:convert\s+)?([\d\.\-e]+)\s*([a-z°]+)\s+(?:to|in)\s+([a-z°]+)/);
-      if (conv1) return { type:'convert', value: conv1[1], from: conv1[2], to: conv1[3] };
-      // temperature words
-      const c2 = s.match(/([\d\.\-e]+)\s*(c|celsius|°c)\s+(?:to|in)\s*(f|fahrenheit|°f)/);
-      if (c2) return { type:'temp', value:c2[1], from:'C', to:'F' };
-      const c3 = s.match(/([\d\.\-e]+)\s*(f|fahrenheit|°f)\s+(?:to|in)\s*(c|celsius|°c)/);
-      if (c3) return { type:'temp', value:c3[1], from:'F', to:'C' };
-
-      // percent, sqrt, trig(deg), power
-      s = s.replace(/(\d+(?:\.\d+)?)\s*%?\s*(percent)?\s*of\s*(\d+(?:\.\d+)?)/g, '($1/100)*$3');
-      s = s.replace(/square\s+root\s+of\s+(\d+(?:\.\d+)?)/g, 'sqrt($1)');
-      s = s.replace(/(sin|cos|tan)\s+(\-?\d+(?:\.\d+)?)\s*degrees?/g, '$1($2 deg)');
-      s = s.replace(/(\d+(?:\.\d+)?)\s+(?:to\s+the\s+power\s+of|power\s+of|power)\s+(\-?\d+(?:\.\d+)?)/g, '($1^$2)');
-
-      // operators
-      [
-        [/divided\s+by/g,'/'],
-        [/\bover\b/g,'/'],
-        [/multiply\s+by|times|multiplied\s+by/g,'*'],
-        [/plus|add(ed)?|and/g,'+'],
-        [/minus|subtract(ed)?/g,'-'],
-      ].forEach(([r,t])=> s = s.replace(r,t));
-
-      // filler cleanup
-      s = s.replace(/\bwhat(?:'|’)s\b|\bwhat is\b|\bcalculate\b|\bhow much is\b|\bplease\b|\bthen\b/gi,' ');
-      s = s.replace(/\s+/g,' ').trim();
-
-      return { type:'expr', expr: s };
+      showResult(rendered);
+      pushHistory(input, rendered);
+      if (autoSpeak.checked) speakResult(rendered);
+    } catch (e){
+      const msg = "Sorry, I couldn't parse that.\nDetails: " + e.message;
+      showResult(msg);
+      if (autoSpeak.checked) speakResult("Hmm, I couldn't parse that.");
+      console.error(e);
     }
+  }
+  goEl.addEventListener('click', process);
+  qEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') process(); });
 
-    function process(){
-      const input = qEl.value.trim();
-      if (!input){ showResult("Please type or say something to calculate."); return; }
-      try{
-        const plan = nlToPlan(input);
-        let rendered = '';
-        if (plan.type === 'convert'){
-          const u = math.unit(Number(plan.value), plan.from);
-          const result = u.to(plan.to);
-          rendered = `${plan.value} ${plan.from} = ${result.toString()}`;
-          lastAnswer = Number(result.toNumber ? result.toNumber() : result.value);
-        } else if (plan.type === 'temp'){
-          let result;
-          if (plan.from==='C' && plan.to==='F'){ result = Number(plan.value) * 9/5 + 32; rendered = `${plan.value} °C = ${formatNumber(result)} °F`; }
-          else { result = (Number(plan.value) - 32) * 5/9; rendered = `${plan.value} °F = ${formatNumber(result)} °C`; }
-          lastAnswer = result;
-        } else {
-          const res = math.evaluate(plan.expr);
-          if (math.typeOf(res) === 'Unit'){ rendered = res.toString(); lastAnswer = Number(res.toNumber()); }
-          else if (math.typeOf(res) === 'BigNumber'){ rendered = res.toString(); lastAnswer = Number(res.toNumber()); }
-          else { rendered = formatNumber(res); lastAnswer = Number(res); }
-        }
-        showResult(rendered);
-        pushHistory(input, rendered);
-        if (autoSpeak.checked) speakResult(rendered);
-      } catch (e){
-        const msg = "Sorry, I couldn't parse that.\nDetails: " + e.message;
-        showResult(msg);
-        if (autoSpeak.checked) speakResult("Hmm, I couldn't parse that.");
-        console.error(e);
+  // ===== Voice INPUT (Web Speech) =====
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null, listening = false, bufferText = '';
+  if (!SR){
+    micBtn.disabled = true; micBtn.title = "Voice not supported here";
+  } else {
+    rec = new SR();
+    rec.lang = 'en-IN'; rec.interimResults = true; rec.continuous = true;
+    rec.onstart = () => { listening = true; micBtn.classList.add('listening'); micLabel.textContent = 'Listening…'; vStatus.textContent = 'Speak your calculation.'; bufferText=''; };
+    rec.onresult = (e) => {
+      let finalText = '', interimText = '';
+      for (let i=e.resultIndex;i<e.results.length;i++){
+        const t = e.results[i][0].transcript;
+        if (e.results[i].isFinal) finalText += t + ' '; else interimText += t + ' ';
       }
-    }
-    goEl.addEventListener('click', process);
-    qEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') process(); });
+      if (interimText) qEl.value = bufferText + interimText.trim();
+      if (finalText){ bufferText += finalText; qEl.value = bufferText.trim(); process(); }
+    };
+    rec.onerror = (e)=>{ vStatus.textContent = 'Voice error: ' + (e.error||'unknown'); stopListening(); };
+    rec.onend = ()=>{ stopListening(false); };
 
-    // Voice input (optional, Chrome/Edge)
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    let rec = null, listening = false, bufferText = '';
-    if (!SR){
-      micBtn.disabled = true;
-      micBtn.title = "Voice not supported here";
-    } else {
-      rec = new SR();
-      rec.lang = 'en-IN';     // change to 'en-US' if you like
-      rec.interimResults = true;
-      rec.continuous = true;
+    function startListening(){ if(!listening){ vStatus.textContent=''; try{ rec.start(); }catch{} } }
+    function stopListening(reset=true){ if(listening){ listening=false; micBtn.classList.remove('listening'); micLabel.textContent='Speak'; try{rec.stop();}catch{} if(reset) vStatus.textContent=''; } }
 
-      rec.onstart = () => { listening = true; micBtn.classList.add('listening'); micLabel.textContent = 'Listening…'; vStatus.textContent = 'Speak your calculation.'; bufferText = ''; };
-      rec.onresult = (e) => {
-        let finalText = '', interimText = '';
-        for (let i = e.resultIndex; i < e.results.length; i++){
-          const t = e.results[i][0].transcript;
-          if (e.results[i].isFinal) finalText += t + ' ';
-          else interimText += t + ' ';
-        }
-        if (interimText) qEl.value = bufferText + interimText.trim();
-        if (finalText){ bufferText += finalText; qEl.value = bufferText.trim(); process(); }
-      };
-      rec.onerror = (e) => { vStatus.textContent = 'Voice error: ' + (e.error || 'unknown'); stopListening(); };
-      rec.onend = () => { stopListening(false); };
+    micBtn.addEventListener('click', ()=> listening ? stopListening() : startListening());
+    window.addEventListener('keydown', (e)=>{ if(e.ctrlKey && (e.key==='m'||e.key==='M')){ e.preventDefault(); listening?stopListening():startListening(); } });
+  }
 
-      function startListening(){ if (!listening){ vStatus.textContent=''; try{ rec.start(); }catch{} } }
-      function stopListening(reset=true){ if(listening){ listening=false; micBtn.classList.remove('listening'); micLabel.textContent='Speak'; try{rec.stop();}catch{} if(reset) vStatus.textContent=''; } }
+  // ===== Voice OUTPUT =====
+  const synth = window.speechSynthesis;
+  let voice = null;
+  function pickVoice(){
+    if (!synth) return null;
+    const voices = synth.getVoices();
+    voice = voices.find(v=>/English|en-/.test(v.lang) && /Female|Google/.test(v.name))
+         || voices.find(v=>/English|en-/.test(v.lang))
+         || voices[0] || null; return voice;
+  }
+  if (synth){ pickVoice(); synth.onvoiceschanged = pickVoice; }
 
-      micBtn.addEventListener('click', ()=> listening ? stopListening() : startListening());
-      window.addEventListener('keydown', (e)=>{
-        if (e.ctrlKey && (e.key==='m' || e.key==='M')){ e.preventDefault(); listening ? stopListening() : startListening(); }
-      });
-    }
+  function enthusiasticLine(raw){
+    const clean = String(raw).replace(/\s+/g,' ').trim();
+    if (!clean) return "Got it!";
+    if (/^[-+]?\d*\.?\d+(?:e[-+]?\d+)?$/.test(clean)) return `Your answer is ${clean}!`;
+    const m = clean.match(/=\s*([^=]+)$/); if (m) return `Your answer is ${m[1].trim()}!`;
+    return `${clean}!`;
+  }
+  function speakResult(text){
+    if (!synth) return; synth.cancel();
+    const u = new SpeechSynthesisUtterance();
+    u.text = enthusiasticLine(text); u.voice = voice || pickVoice();
+    u.rate = 1.15; u.pitch = 1.25; u.volume = 1.0; synth.speak(u);
+  }
+  sayBtn.addEventListener('click', ()=> speakResult(outEl.textContent || 'Ready.'));
+  window.addEventListener('keydown', (e)=>{ if(e.ctrlKey && (e.key==='l'||e.key==='L')){ e.preventDefault(); speakResult(outEl.textContent || 'Ready.'); } });
 
-    // ===== Voice OUTPUT (Text-to-Speech) =====
-    const synth = window.speechSynthesis;
-    let voice = null;
-    function pickVoice(){
-      if (!synth) return null;
-      const voices = synth.getVoices();
-      voice = voices.find(v=>/English|en-/.test(v.lang) && /Female|Google/.test(v.name))
-           || voices.find(v=>/English|en-/.test(v.lang))
-           || voices[0] || null;
-      return voice;
-    }
-    if (synth){ pickVoice(); synth.onvoiceschanged = pickVoice; }
-
-    function enthusiasticLine(raw){
-      const clean = String(raw).replace(/\s+/g,' ').trim();
-      if (!clean) return "Got it!";
-      if (/^[-+]?\d*\.?\d+(?:e[-+]?\d+)?$/.test(clean)) return `Your answer is ${clean}!`;
-      const m = clean.match(/=\s*([^=]+)$/);
-      if (m) return `Your answer is ${m[1].trim()}!`;
-      return `${clean}!`;
-    }
-
-    function speakResult(text){
-      if (!synth) return;
-      synth.cancel();
-      const u = new SpeechSynthesisUtterance();
-      u.text = enthusiasticLine(text);
-      u.voice = voice || pickVoice();
-      u.rate = 1.15;      // energetic
-      u.pitch = 1.25;     // brighter
-      u.volume = 1.0;
-      synth.speak(u);
-    }
-
-    sayBtn.addEventListener('click', ()=> speakResult(outEl.textContent || 'Ready.'));
-    window.addEventListener('keydown', (e)=>{
-      if (e.ctrlKey && (e.key==='l' || e.key==='L')){ e.preventDefault(); speakResult(outEl.textContent || 'Ready.'); }
-    });
-
-    setTimeout(()=> qEl.focus(), 0);
-  })();
-  </script>
+  setTimeout(()=> qEl.focus(), 0);
+})();
+</script>
 </body>
 </html>
