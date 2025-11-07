@@ -4,13 +4,19 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>AI Calculator</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop stop-color='%237aa2ff'/%3E%3Cstop stop-color='%23a78bfa' offset='1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect rx='14' ry='14' width='64' height='64' fill='%23101725'/%3E%3Cpath d='M12 48h40' stroke='url(%23g)' stroke-width='5' stroke-linecap='round'/%3E%3Ctext x='32' y='34' text-anchor='middle' font-size='28' fill='%23e9ecff' font-family='Segoe UI, Roboto, Arial' %3E∑%3C/text%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1' y1='0' y2='1'%3E%3Cstop stop-color='%237aa2ff'/%3E%3Cstop stop-color='%23a78bfa' offset='1'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect rx='14' ry='14' width='64' height='64' fill='%23101725'/%3E%3Cpath d='M12 50h40' stroke='url(%23g)' stroke-width='5' stroke-linecap='round'/%3E%3Ctext x='32' y='35' text-anchor='middle' font-size='28' fill='%23e9ecff' font-family='Segoe UI, Inter, Roboto' %3E∑%3C/text%3E%3C/svg%3E">
 <script src="https://cdn.jsdelivr.net/npm/mathjs@11/lib/browser/math.js" defer></script>
-
 <style>
   :root{
-    --bg:#0b1020; --card:rgba(20,24,45,.55); --stroke:rgba(130,145,200,.25);
-    --ink:#eef1ff; --muted:#a9b0d6; --accent:#7aa2ff; --accent2:#a78bfa;
+    --bg:#0b1020; --bg2:#0b0f1c; --card:rgba(20,24,45,.55);
+    --stroke:rgba(130,145,200,.25); --ink:#eef1ff; --muted:#a9b0d6;
+    --accent:#7aa2ff; --accent2:#a78bfa;
+    --ok:#55efc4; --warn:#ffadad;
+  }
+  [data-theme="light"]{
+    --bg:#edf2ff; --bg2:#eef3ff; --card:rgba(255,255,255,.7);
+    --stroke:rgba(30,60,150,.16); --ink:#121528; --muted:#4a5388;
+    --accent:#1f6bff; --accent2:#8a5cff;
   }
   *{box-sizing:border-box}
   html,body{height:100%}
@@ -19,25 +25,27 @@
     font:16px/1.5 ui-sans-serif,system-ui,Segoe UI,Inter,Roboto,Arial;
     display:flex; min-height:100vh; overflow-x:hidden;
     background:
-      radial-gradient(1200px 600px at -10% -10%, rgba(122,162,255,.12), transparent 60%),
-      radial-gradient(900px 500px at 110% 10%, rgba(167,139,250,.12), transparent 60%),
-      radial-gradient(1200px 700px at 50% 120%, rgba(122,162,255,.12), transparent 60%),
-      linear-gradient(180deg,#0b1020,#0b0f1c 60%, #0a0e1a);
+      radial-gradient(1200px 600px at -10% -10%, color-mix(in srgb,var(--accent) 22%, transparent), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, color-mix(in srgb,var(--accent2) 22%, transparent), transparent 60%),
+      radial-gradient(1200px 700px at 50% 120%, color-mix(in srgb,var(--accent) 18%, transparent), transparent 60%),
+      linear-gradient(180deg,var(--bg),var(--bg2) 60%, var(--bg));
   }
-  .container{width:100%; max-width:1000px; margin:auto; padding:48px 24px 64px; position:relative}
-  /* subtle floating blobs */
-  .blob{position:absolute; filter:blur(60px); opacity:.25; pointer-events:none}
-  .b1{width:380px; height:380px; background:radial-gradient(circle at 30% 30%,#7aa2ff,transparent 60%); top:-120px; left:-120px}
-  .b2{width:420px; height:420px; background:radial-gradient(circle at 70% 70%,#a78bfa,transparent 60%); top:-80px; right:-120px}
-
-  header{display:flex; align-items:center; gap:14px; margin:0 0 24px}
+  .container{width:100%; max-width:1100px; margin:auto; padding:48px 20px 80px; position:relative}
+  .blob{position:absolute; filter:blur(70px); opacity:.25; pointer-events:none}
+  .b1{width:380px; height:380px; background:radial-gradient(circle at 30% 30%,var(--accent),transparent 60%); top:-120px; left:-120px}
+  .b2{width:420px; height:420px; background:radial-gradient(circle at 70% 70%,var(--accent2),transparent 60%); top:-80px; right:-120px}
+  header{display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 24px}
+  .brand{display:flex; align-items:center; gap:12px}
   .logo{
     background:linear-gradient(92deg,var(--accent),var(--accent2));
     -webkit-background-clip:text; background-clip:text; color:transparent;
-    font-weight:900; font-size:34px; letter-spacing:.2px
+    font-weight:900; font-size:32px; letter-spacing:.2px
   }
   .tag{color:var(--muted); font-size:14px}
-
+  .toolbar{display:flex; gap:8px; align-items:center}
+  .tbtn{background:rgba(10,14,30,.65); color:var(--ink); border:1px solid var(--stroke);
+        border-radius:12px; padding:8px 12px; cursor:pointer}
+  [data-theme="light"] .tbtn{background:rgba(255,255,255,.8)}
   .card{
     background:var(--card);
     border:1px solid var(--stroke);
@@ -46,8 +54,6 @@
     box-shadow:0 10px 30px rgba(5,8,20,.45), inset 0 1px 0 rgba(255,255,255,.05);
     backdrop-filter: blur(10px);
   }
-
-  /* input row */
   .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
   .inputWrap{flex:1; display:flex; gap:10px; align-items:center; position:relative}
   input[type=text]{
@@ -56,75 +62,79 @@
     padding:14px 16px; color:var(--ink); font-size:16px; outline:none;
     transition:border .18s, box-shadow .18s, transform .06s;
   }
+  [data-theme="light"] input[type=text]{ background:rgba(255,255,255,.85) }
   input[type=text]::placeholder{color:#7f88b1}
   input[type=text]:focus{
     border-color: color-mix(in srgb, var(--accent) 60%, white 0%);
-    box-shadow:0 0 0 4px rgba(122,162,255,.18), 0 8px 24px rgba(10,18,40,.4);
+    box-shadow:0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent), 0 8px 24px rgba(10,18,40,.4);
   }
-
   button{
     background:linear-gradient(92deg,var(--accent), var(--accent2));
     color:#0c1022; border:none; border-radius:14px; padding:12px 16px;
     font-weight:700; cursor:pointer; transition:transform .06s, filter .2s, box-shadow .2s;
-    box-shadow:0 6px 22px rgba(122,162,255,.25);
+    box-shadow:0 6px 22px color-mix(in srgb, var(--accent) 36%, transparent);
   }
   button:active{transform:translateY(1px)}
   .ghost{
     background:rgba(10,14,30,.75); color:var(--ink);
     border:1px solid var(--stroke); box-shadow:none;
   }
+  [data-theme="light"] .ghost{ background:rgba(255,255,255,.85) }
   .ghost:hover{border-color:color-mix(in srgb, var(--accent) 60%, white 0%)}
-
   .controls{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:12px 0 6px}
   .toggle{display:inline-flex; gap:8px; align-items:center; font-size:13px; color:var(--muted)}
   .status{font-size:12px; color:var(--muted)}
-
-  /* chips */
   .chips{display:flex; gap:10px; flex-wrap:wrap; margin-top:10px}
   .chip{
     background:rgba(10,14,30,.75); border:1px solid var(--stroke);
     color:#fff; border-radius:999px; padding:8px 12px; font-size:13px; cursor:pointer;
     transition:border .18s, transform .06s, box-shadow .2s;
   }
-  .chip:hover{border-color:color-mix(in srgb, var(--accent) 60%, white 0%); box-shadow:0 0 0 3px rgba(122,162,255,.14)}
+  .chip:hover{border-color:color-mix(in srgb, var(--accent) 60%, white 0%); box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent)}
   .chip:active{transform:translateY(1px)}
-
-  /* result box */
   .out{
     margin-top:14px; padding:16px 18px; background:rgba(10,14,30,.75);
     border:1px dashed var(--stroke); border-radius:14px; white-space:pre-wrap;
-    font-size:15px; min-height:54px;
+    font-size:15px; min-height:54px; display:flex; align-items:center; justify-content:space-between; gap:8px;
   }
-
-  /* history */
+  .out .actions{display:flex; gap:8px; flex-wrap:wrap}
+  .act{border:1px solid var(--stroke); border-radius:10px; padding:6px 10px; background:rgba(10,14,30,.6); color:var(--ink); cursor:pointer}
   .history{margin-top:18px}
   .history h3{margin:0 0 8px; font-size:15px; color:var(--muted); font-weight:700}
   .history ul{margin:0; padding-left:20px; font-size:14px; color:#d7dcff}
   .small{font-size:12px; color:#9aa2d9; margin-top:6px}
-  code{background:rgba(122,162,255,.12); border:1px solid rgba(122,162,255,.2); padding:2px 6px; border-radius:8px}
-
-  /* mic button */
-  .mic{display:inline-flex; align-items:center; gap:8px; background:rgba(10,14,30,.75);
-       color:var(--ink); border:1px solid var(--stroke)}
-  .mic.listening{box-shadow:0 0 0 2px rgba(122,162,255,.5), 0 0 0 8px rgba(122,162,255,.15)}
-  .spacer{height:14px}
-  @media (max-width:640px){ .title{font-size:26px} }
+  .explain{margin-top:8px; font-size:13px; color:#cfd4ff; background:rgba(10,14,30,.6); border:1px solid var(--stroke); border-radius:10px; padding:10px 12px}
+  .explain b{color:#fff}
+  /* Settings modal */
+  dialog{border:none; border-radius:16px; padding:0; width:min(540px, 94vw); background:var(--card); color:var(--ink); border:1px solid var(--stroke); box-shadow:0 20px 60px rgba(0,0,0,.45); backdrop-filter: blur(10px)}
+  .dhead{display:flex; justify-content:space-between; align-items:center; padding:16px 18px; border-bottom:1px solid var(--stroke)}
+  .dcont{padding:16px 18px; display:grid; gap:14px}
+  .drow{display:flex; justify-content:space-between; align-items:center; gap:12px}
+  .range{width:200px}
+  .muted{color:var(--muted); font-size:13px}
 </style>
 </head>
 <body>
-<div class="container">
+<div class="container" id="root">
   <div class="blob b1"></div><div class="blob b2"></div>
 
   <header>
-    <div class="logo">AI Calculator</div>
-    <div class="tag">Type or speak. I’ll do the math.</div>
+    <div class="brand">
+      <div class="logo">AI Calculator</div>
+      <div class="tag">Type or speak. I’ll do the math.</div>
+    </div>
+    <div class="toolbar">
+      <button class="tbtn" id="themeBtn">🌗 Theme</button>
+      <button class="tbtn" id="settingsBtn" title="Settings (?)">⚙️ Settings</button>
+      <a class="tbtn" href="https://github.com/NadimS07/ai-calculator" target="_blank">⭐ GitHub</a>
+    </div>
   </header>
 
   <div class="card">
     <div class="row">
       <div class="inputWrap">
         <input id="q" type="text" placeholder='Try: "15% of 120", "sin 30 degrees", "5 km to miles"' />
-        <button id="mic" class="mic ghost" title="Toggle voice (Ctrl+M)">🎤 <span id="micLabel">Speak</span></button>
+        <button id="mic" class="ghost" title="Toggle voice (Ctrl+M)">🎤 <span id="micLabel">Speak</span></button>
       </div>
       <button id="go">Calculate</button>
     </div>
@@ -132,28 +142,73 @@
     <div class="controls">
       <button id="say" class="ghost" title="Speak result (Ctrl+L)">🔊 Speak Result</button>
       <label class="toggle"><input type="checkbox" id="autoSpeak" checked> Auto-speak results</label>
+      <label class="toggle"><input type="checkbox" id="explainToggle" checked> Explain mode</label>
       <span class="status" id="vStatus"></span>
     </div>
 
     <div class="chips" id="chips"></div>
 
-    <div class="out" id="out">Result will appear here.</div>
+    <div class="out" id="out">
+      <span id="answerText">Result will appear here.</span>
+      <div class="actions">
+        <button class="act" id="copyBtn" title="Copy result">📋 Copy</button>
+        <button class="act" id="shareBtn" title="Share link">🔗 Share</button>
+        <button class="act" id="clearBtn" title="Clear input">🗑️ Clear</button>
+      </div>
+    </div>
+
+    <div id="explain" class="explain" style="display:none"></div>
 
     <div class="history">
       <h3>History</h3>
       <ul id="hist"></ul>
-      <div class="small">Tips: “add 5 and 7 * 3”, “square root of 81”, “use last / 4”. Last keyword: <code>last</code>.</div>
+      <div class="small">Tips: “add 5 and 7 * 3”, “square root of 81”, “use last / 4”. Last keyword: <code>last</code>.  
+      Shortcuts: <code>Enter</code> calculate, <code>Ctrl+M</code> mic, <code>Ctrl+L</code> speak, <code>?</code> settings.</div>
     </div>
   </div>
-
-  <div class="spacer"></div>
 </div>
+
+<!-- Settings Modal -->
+<dialog id="settings">
+  <div class="dhead">
+    <strong>Settings</strong>
+    <button class="tbtn" id="closeSettings">✖</button>
+  </div>
+  <div class="dcont">
+    <div class="drow">
+      <span>Voice Rate</span>
+      <input type="range" min="0.7" max="1.6" step="0.05" value="1.15" id="rate" class="range">
+    </div>
+    <div class="drow">
+      <span>Voice Pitch</span>
+      <input type="range" min="0.7" max="1.6" step="0.05" value="1.25" id="pitch" class="range">
+    </div>
+    <div class="drow">
+      <span>Angle Mode</span>
+      <div>
+        <label><input type="radio" name="angle" value="deg" checked> Degrees</label>
+        &nbsp;&nbsp;
+        <label><input type="radio" name="angle" value="rad"> Radians</label>
+      </div>
+    </div>
+    <div class="drow">
+      <span>Number Format</span>
+      <div>
+        <label><input type="checkbox" id="sep"> Thousands separator</label>
+        <div class="muted">E.g., 12,345.678</div>
+      </div>
+    </div>
+    <div class="muted">Your settings are saved in localStorage.</div>
+  </div>
+</dialog>
 
 <script defer>
 (function(){
   // ===== DOM =====
+  const root = document.getElementById('root');
   const qEl = document.getElementById('q');
-  const outEl = document.getElementById('out');
+  const outWrap = document.getElementById('out');
+  const outText = document.getElementById('answerText');
   const goEl = document.getElementById('go');
   const histEl = document.getElementById('hist');
   const chipsEl = document.getElementById('chips');
@@ -162,10 +217,54 @@
   const vStatus = document.getElementById('vStatus');
   const sayBtn = document.getElementById('say');
   const autoSpeak = document.getElementById('autoSpeak');
+  const explainToggle = document.getElementById('explainToggle');
+  const explainBox = document.getElementById('explain');
+  const copyBtn = document.getElementById('copyBtn');
+  const shareBtn = document.getElementById('shareBtn');
+  const clearBtn = document.getElementById('clearBtn');
+
+  const themeBtn = document.getElementById('themeBtn');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const modal = document.getElementById('settings');
+  const closeSettings = document.getElementById('closeSettings');
+  const rateEl = document.getElementById('rate');
+  const pitchEl = document.getElementById('pitch');
+  const sepEl = document.getElementById('sep');
+
+  // Angle mode radios
+  const angleRadios = Array.from(document.querySelectorAll('input[name="angle"]'));
+
+  // ===== Persistence (theme + settings) =====
+  const savedTheme = localStorage.getItem('theme');
+  if (savedTheme) document.body.setAttribute('data-theme', savedTheme);
+  themeBtn.onclick = ()=> {
+    const cur = document.body.getAttribute('data-theme') === 'light' ? 'dark':'light';
+    if (cur==='dark') document.body.removeAttribute('data-theme'); else document.body.setAttribute('data-theme','light');
+    localStorage.setItem('theme', document.body.getAttribute('data-theme') || 'dark');
+  };
+
+  const settings = JSON.parse(localStorage.getItem('aiCalcSettings')||'{}');
+  if (settings.rate) rateEl.value = settings.rate;
+  if (settings.pitch) pitchEl.value = settings.pitch;
+  if (settings.sep) sepEl.checked = true;
+  if (settings.angle) angleRadios.forEach(r=> r.checked = (r.value===settings.angle));
+  function saveSettings(){
+    localStorage.setItem('aiCalcSettings', JSON.stringify({
+      rate: parseFloat(rateEl.value),
+      pitch: parseFloat(pitchEl.value),
+      sep: sepEl.checked,
+      angle: angleRadios.find(r=>r.checked)?.value || 'deg'
+    }));
+  }
+  [rateEl,pitchEl,sepEl,...angleRadios].forEach(el=> el.addEventListener('input', saveSettings));
+  settingsBtn.onclick = ()=> modal.showModal();
+  closeSettings.onclick = ()=> modal.close();
+  window.addEventListener('keydown', e=>{ if(e.key==='?') modal.open?modal.close():modal.showModal(); });
 
   // ===== Core =====
   let lastAnswer = null;
   const history = [];
+
   const examples = [
     "what's 15% of 120",
     "add 5 and 7 then multiply by 3",
@@ -176,51 +275,139 @@
     "40 celsius to fahrenheit",
     "use last answer / 4"
   ];
-  examples.forEach(e=>{
-    const c=document.createElement('button');
-    c.className='chip'; c.textContent=e;
-    c.onclick=()=>{ qEl.value=e; process(); };
-    chipsEl.appendChild(c);
-  });
+  // Smart suggestions builder
+  function suggestFromIntent(intent){
+    if (intent==='percent') return ["what's 18% of 650", "increase 120 by 12%"];
+    if (intent==='convert') return ["convert 10 miles to km", "500 ml to l"];
+    if (intent==='trig') return ["cos 60 degrees", "tan 45 degrees"];
+    if (intent==='temp') return ["98 °F to celsius", "0 °C to °F"];
+    if (intent==='power') return ["3 to the power of 4", "square root of 144"];
+    return ["5 km to miles","what's 15% of 220","sin 30 degrees"];
+  }
+  function refreshChips(extra){
+    chipsEl.innerHTML = '';
+    const list = extra?.length ? extra : examples;
+    list.forEach(e=>{
+      const c=document.createElement('button');
+      c.className='chip'; c.textContent=e;
+      c.onclick=()=>{ qEl.value=e; process(); };
+      chipsEl.appendChild(c);
+    });
+  }
+  refreshChips();
 
   function escapeHtml(s){ return s.toString().replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
-  function showResult(text){ outEl.textContent = text; }
-  function pushHistory(input, result){
-    history.unshift({input, result});
-    histEl.innerHTML = history.map(h => `<li><strong>${escapeHtml(h.input)}</strong> = ${escapeHtml(h.result.toString())}</li>`).join('');
+  function showResult(text){ outText.textContent = text; }
+  function pushHistory(input, result, exp){
+    history.unshift({input, result, exp});
+    histEl.innerHTML = history.map((h,i) =>
+      `<li>
+         <strong>${escapeHtml(h.input)}</strong> = ${escapeHtml(h.result.toString())}
+         ${h.exp ? ` <button class="act" onclick="document.querySelectorAll('.hx')[${i}].style.display = (document.querySelectorAll('.hx')[${i}].style.display==='none'?'block':'none')">Explain</button>`:''}
+         <div class="explain hx" style="display:none">${h.exp||''}</div>
+       </li>`
+    ).join('');
   }
-  function formatNumber(n){ return (typeof n === 'number' && !Number.isInteger(n)) ? String(Number(n.toFixed(8))) : String(n); }
+  function formatNumber(n){
+    if (typeof n === 'number' && !Number.isInteger(n)) n = Number(n.toFixed(8));
+    if (sepEl.checked && typeof n === 'number') return n.toLocaleString();
+    return String(n);
+  }
 
-  // Natural language → math
-  function nlToPlan(raw){
+  // “AI-ish” Natural language → plan (intent detection + patterns + typo forgiveness)
+  function normalize(raw){
     let s = ' ' + raw.toLowerCase().trim() + ' ';
+    s = s.replace(/\s+/g,' ');
+    // fix common typos quickly
+    s = s.replace(/\bcelc?ius\b/g,'celsius').replace(/\bfaren(h|)eit\b/g,'fahrenheit')
+         .replace(/\bdeg\b/g,'degrees').replace(/\bkilometers?\b/g,'km').replace(/\bmeters?\b/g,'m');
+    return s;
+  }
+  function nlToPlan(raw){
+    let s = normalize(raw);
+    const angleMode = (angleRadios.find(r=>r.checked)?.value || 'deg');
+
     if (lastAnswer !== null){
       s = s.replace(/\blast answer\b/g, lastAnswer.toString());
       s = s.replace(/\blast\b/g, lastAnswer.toString());
     }
+    // --- intent: convert units ---
     const conv1 = s.match(/(?:convert\s+)?([\d\.\-e]+)\s*([a-z°]+)\s+(?:to|in)\s+([a-z°]+)/);
-    if (conv1) return { type:'convert', value: conv1[1], from: conv1[2], to: conv1[3] };
+    if (conv1) return { type:'convert', intent:'convert', value: conv1[1], from: conv1[2], to: conv1[3], raw };
+    // --- intent: temperature ---
     const c2 = s.match(/([\d\.\-e]+)\s*(c|celsius|°c)\s+(?:to|in)\s*(f|fahrenheit|°f)/);
-    if (c2) return { type:'temp', value:c2[1], from:'C', to:'F' };
+    if (c2) return { type:'temp', intent:'temp', value:c2[1], from:'C', to:'F', raw };
     const c3 = s.match(/([\d\.\-e]+)\s*(f|fahrenheit|°f)\s+(?:to|in)\s*(c|celsius|°c)/);
-    if (c3) return { type:'temp', value:c3[1], from:'F', to:'C' };
-    s = s.replace(/(\d+(?:\.\d+)?)\s*%?\s*(percent)?\s*of\s*(\d+(?:\.\d+)?)/g, '($1/100)*$3');
-    s = s.replace(/square\s+root\s+of\s+(\d+(?:\.\d+)?)/g, 'sqrt($1)');
-    s = s.replace(/(sin|cos|tan)\s+(\-?\d+(?:\.\d+)?)\s*degrees?/g, '$1($2 deg)');
-    s = s.replace(/(\d+(?:\.\d+)?)\s+(?:to\s+the\s+power\s+of|power\s+of|power)\s+(\-?\d+(?:\.\d+)?)/g, '($1^$2)');
+    if (c3) return { type:'temp', intent:'temp', value:c3[1], from:'F', to:'C', raw };
+
+    // percent, sqrt, power
+    let expr = s;
+    let intent = 'expr';
+    if (/percent|% of/.test(expr)){ intent='percent'; }
+    expr = expr.replace(/(\d+(?:\.\d+)?)\s*%?\s*(percent)?\s*of\s*(\d+(?:\.\d+)?)/g, '($1/100)*$3');
+    expr = expr.replace(/square\s+root\s+of\s+(\d+(?:\.\d+)?)/g, 'sqrt($1)');
+    if (/power/.test(expr)) intent = 'power';
+    expr = expr.replace(/(\d+(?:\.\d+)?)\s+(?:to\s+the\s+power\s+of|power\s+of|power)\s+(\-?\d+(?:\.\d+)?)/g, '($1^$2)');
+
+    // trig (degrees or radians)
+    if (/(sin|cos|tan)\s+/.test(expr)) intent='trig';
+    if (angleMode==='deg'){
+      expr = expr.replace(/(sin|cos|tan)\s+(\-?\d+(?:\.\d+)?)\s*degrees?/g, '$1($2 deg)');
+    } else {
+      expr = expr.replace(/(sin|cos|tan)\s+(\-?\d+(?:\.\d+)?)/g, '$1($2)'); // assume already radians
+    }
+
+    // operators (some NL)
     [
       [/divided\s+by/g,'/'], [/\bover\b/g,'/'],
       [/multiply\s+by|times|multiplied\s+by/g,'*'],
       [/plus|add(ed)?|and/g,'+'], [/minus|subtract(ed)?/g,'-'],
-    ].forEach(([r,t])=> s = s.replace(r,t));
-    s = s.replace(/\bwhat(?:'|’)s\b|\bwhat is\b|\bcalculate\b|\bhow much is\b|\bplease\b|\bthen\b/gi,' ');
-    s = s.replace(/\s+/g,' ').trim();
-    return { type:'expr', expr: s };
+    ].forEach(([r,t])=> expr = expr.replace(r,t));
+
+    expr = expr.replace(/\bwhat(?:'|’)s\b|\bwhat is\b|\bcalculate\b|\bhow much is\b|\bplease\b|\bthen\b/gi,' ');
+    expr = expr.replace(/\s+/g,' ').trim();
+
+    return { type:'expr', intent, expr, raw };
+  }
+
+  function explainCompact(plan, rendered){
+    try{
+      // percent
+      if (/\(\s*[\d\.]+\/100\)\s*\*\s*[\d\.]+/.test(plan.expr||'')) {
+        const m = plan.expr.match(/^\(\s*([\d\.]+)\/100\)\s*\*\s*([\d\.]+)$/);
+        if (m) return `<b>Percent:</b> ${m[1]}% of ${m[2]} = (${m[1]}/100) × ${m[2]} = <b>${rendered}</b>`;
+      }
+      // power
+      if (/^\(?[\d\.]+\^[-\d\.]+\)?$/.test(plan.expr||'')) {
+        const [base, pow] = plan.expr.replace(/[()]/g,'').split('^');
+        return `<b>Power:</b> ${base}<sup>${pow}</sup> = <b>${rendered}</b>`;
+      }
+      // sqrt
+      if (/^sqrt\([\d\.]+\)$/.test(plan.expr||'')) {
+        const m = plan.expr.match(/sqrt\(([\d\.]+)\)/);
+        return `<b>Root:</b> √${m[1]} = <b>${rendered}</b>`;
+      }
+      // trig
+      if (/(sin|cos|tan)\(([-\d\.]+)\s*deg\)/.test(plan.expr||'')) {
+        const m = plan.expr.match(/(sin|cos|tan)\(([-\d\.]+)\s*deg\)/);
+        return `<b>Trig:</b> ${m[1]}(${m[2]}°) → radians = ${m[2]}×π/180 → <b>${rendered}</b>`;
+      }
+      if (plan.type==='convert') {
+        const one = math.unit(1, plan.from).to(plan.to);
+        return `<b>Convert:</b> 1 ${plan.from} = ${one.toString()} → ${plan.value} ${plan.from} = <b>${rendered}</b>`;
+      }
+      if (plan.type==='temp'){
+        if (plan.from==='C') return `<b>Temp:</b> (°C × 9/5) + 32 → <b>${rendered}</b>`;
+        return `<b>Temp:</b> (°F − 32) × 5/9 → <b>${rendered}</b>`;
+      }
+      if (plan.expr) return `<b>Eval:</b> ${plan.expr} = <b>${rendered}</b>`;
+    }catch(_){}
+    return '';
   }
 
   function process(){
     const input = qEl.value.trim();
-    if (!input){ showResult("Please type or say something to calculate."); return; }
+    if (!input){ showResult("Please type or say something to calculate."); explainBox.style.display='none'; explainBox.innerHTML=''; return; }
     try{
       const plan = nlToPlan(input);
       let rendered = '';
@@ -241,17 +428,37 @@
         else { rendered = formatNumber(res); lastAnswer = Number(res); }
       }
       showResult(rendered);
-      pushHistory(input, rendered);
+
+      // Explain + history
+      let exp = '';
+      if (explainToggle.checked) {
+        exp = explainCompact(plan, rendered);
+        if (exp) { explainBox.style.display='block'; explainBox.innerHTML = exp; } else { explainBox.style.display='none'; explainBox.innerHTML=''; }
+      } else { explainBox.style.display='none'; explainBox.innerHTML=''; }
+      pushHistory(input, rendered, exp);
+
+      // Smart suggestions refresh
+      refreshChips(suggestFromIntent(plan.intent));
+
       if (autoSpeak.checked) speakResult(rendered);
+
+      // Update shareable URL with query
+      const url = new URL(location.href); url.hash = encodeURIComponent(input); history.replaceState(null,'',url.toString());
     } catch (e){
       const msg = "Sorry, I couldn't parse that.\nDetails: " + e.message;
-      showResult(msg);
+      showResult(msg); explainBox.style.display='none'; explainBox.innerHTML='';
       if (autoSpeak.checked) speakResult("Hmm, I couldn't parse that.");
       console.error(e);
     }
   }
   goEl.addEventListener('click', process);
   qEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter') process(); });
+
+  // Load from share link (#query)
+  if (location.hash){
+    const initQ = decodeURIComponent(location.hash.slice(1));
+    if (initQ){ qEl.value = initQ; setTimeout(process, 50); }
+  }
 
   // ===== Voice INPUT (Web Speech) =====
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -287,7 +494,7 @@
   function pickVoice(){
     if (!synth) return null;
     const voices = synth.getVoices();
-    voice = voices.find(v=>/English|en-/.test(v.lang) && /Female|Google/.test(v.name))
+    voice = voices.find(v=>/English|en-/.test(v.lang) && /Female|Google|Microsoft/.test(v.name))
          || voices.find(v=>/English|en-/.test(v.lang))
          || voices[0] || null; return voice;
   }
@@ -304,11 +511,25 @@
     if (!synth) return; synth.cancel();
     const u = new SpeechSynthesisUtterance();
     u.text = enthusiasticLine(text); u.voice = voice || pickVoice();
-    u.rate = 1.15; u.pitch = 1.25; u.volume = 1.0; synth.speak(u);
+    u.rate = parseFloat(rateEl.value||'1.15'); u.pitch = parseFloat(pitchEl.value||'1.25'); u.volume = 1.0; synth.speak(u);
   }
-  sayBtn.addEventListener('click', ()=> speakResult(outEl.textContent || 'Ready.'));
-  window.addEventListener('keydown', (e)=>{ if(e.ctrlKey && (e.key==='l'||e.key==='L')){ e.preventDefault(); speakResult(outEl.textContent || 'Ready.'); } });
+  sayBtn.addEventListener('click', ()=> speakResult(outText.textContent || 'Ready.'));
+  window.addEventListener('keydown', (e)=>{ if(e.ctrlKey && (e.key==='l'||e.key==='L')){ e.preventDefault(); speakResult(outText.textContent || 'Ready.'); } });
 
+  // ===== Copy / Share / Clear =====
+  copyBtn.onclick = async ()=>{
+    try{ await navigator.clipboard.writeText(outText.textContent.trim()); copyBtn.textContent='✅ Copied'; setTimeout(()=>copyBtn.textContent='📋 Copy',1200); }catch{}
+  };
+  shareBtn.onclick = async ()=>{
+    const link = location.href.split('#')[0] + '#' + encodeURIComponent(qEl.value.trim());
+    try{
+      if (navigator.share){ await navigator.share({title:'AI Calculator', text:'Check this calc:', url:link}); }
+      else { await navigator.clipboard.writeText(link); shareBtn.textContent='✅ Link Copied'; setTimeout(()=>shareBtn.textContent='🔗 Share',1200); }
+    }catch{}
+  };
+  clearBtn.onclick = ()=>{ qEl.value=''; showResult('Result will appear here.'); explainBox.style.display='none'; explainBox.innerHTML=''; };
+
+  // ===== Initial focus =====
   setTimeout(()=> qEl.focus(), 0);
 })();
 </script>
