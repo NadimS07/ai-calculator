@@ -26,6 +26,8 @@
       border:1px solid #2a3152}
     .mic.listening{box-shadow:0 0 0 2px #2a3152,0 0 0 6px rgba(122,162,255,.25)}
     .status{font-size:12px;color:var(--muted)}
+    .controls{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:12px}
+    .toggle{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--muted)}
     .out{margin-top:14px;padding:14px 16px;background:#0f1427;border:1px dashed #2a3152;border-radius:12px;white-space:pre-wrap}
     .chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
     .chip{background:#0f1427;border:1px solid #2a3152;border-radius:999px;padding:8px 10px;font-size:13px;cursor:pointer;color:#fff}
@@ -48,7 +50,13 @@
         </div>
         <button id="go">Calculate</button>
       </div>
-      <div class="status" id="vStatus"></div>
+
+      <!-- NEW: Voice output controls -->
+      <div class="controls">
+        <button id="say" title="Speak result (Ctrl+L)">🔊 Speak Result</button>
+        <label class="toggle"><input type="checkbox" id="autoSpeak" checked> Auto-speak results</label>
+        <span class="status" id="vStatus"></span>
+      </div>
 
       <div class="chips" id="chips"></div>
       <div class="out" id="out">Result will appear here.</div>
@@ -72,6 +80,8 @@
     const micBtn = document.getElementById('mic');
     const micLabel = document.getElementById('micLabel');
     const vStatus = document.getElementById('vStatus');
+    const sayBtn = document.getElementById('say');
+    const autoSpeak = document.getElementById('autoSpeak');
 
     // Core
     let lastAnswer = null;
@@ -163,8 +173,11 @@
         }
         showResult(rendered);
         pushHistory(input, rendered);
+        if (autoSpeak.checked) speakResult(rendered);
       } catch (e){
-        showResult("Sorry, I couldn't parse that.\nDetails: " + e.message);
+        const msg = "Sorry, I couldn't parse that.\nDetails: " + e.message;
+        showResult(msg);
+        if (autoSpeak.checked) speakResult("Hmm, I couldn't parse that.");
         console.error(e);
       }
     }
@@ -205,6 +218,45 @@
         if (e.ctrlKey && (e.key==='m' || e.key==='M')){ e.preventDefault(); listening ? stopListening() : startListening(); }
       });
     }
+
+    // ===== Voice OUTPUT (Text-to-Speech) =====
+    const synth = window.speechSynthesis;
+    let voice = null;
+    function pickVoice(){
+      if (!synth) return null;
+      const voices = synth.getVoices();
+      voice = voices.find(v=>/English|en-/.test(v.lang) && /Female|Google/.test(v.name))
+           || voices.find(v=>/English|en-/.test(v.lang))
+           || voices[0] || null;
+      return voice;
+    }
+    if (synth){ pickVoice(); synth.onvoiceschanged = pickVoice; }
+
+    function enthusiasticLine(raw){
+      const clean = String(raw).replace(/\s+/g,' ').trim();
+      if (!clean) return "Got it!";
+      if (/^[-+]?\d*\.?\d+(?:e[-+]?\d+)?$/.test(clean)) return `Your answer is ${clean}!`;
+      const m = clean.match(/=\s*([^=]+)$/);
+      if (m) return `Your answer is ${m[1].trim()}!`;
+      return `${clean}!`;
+    }
+
+    function speakResult(text){
+      if (!synth) return;
+      synth.cancel();
+      const u = new SpeechSynthesisUtterance();
+      u.text = enthusiasticLine(text);
+      u.voice = voice || pickVoice();
+      u.rate = 1.15;      // energetic
+      u.pitch = 1.25;     // brighter
+      u.volume = 1.0;
+      synth.speak(u);
+    }
+
+    sayBtn.addEventListener('click', ()=> speakResult(outEl.textContent || 'Ready.'));
+    window.addEventListener('keydown', (e)=>{
+      if (e.ctrlKey && (e.key==='l' || e.key==='L')){ e.preventDefault(); speakResult(outEl.textContent || 'Ready.'); }
+    });
 
     setTimeout(()=> qEl.focus(), 0);
   })();
